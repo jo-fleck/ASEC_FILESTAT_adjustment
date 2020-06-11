@@ -65,7 +65,7 @@ for k in hhs_2003
 
         num_vec = unique(df_tmp.num)
 
-        # hhs with taxable income > 0
+        # hhs with agi > 0
         age_101 = df_tmp[df_tmp.RELATE .== 101, :AGE][1]
         age_201 = df_tmp[df_tmp.RELATE .== 201, :AGE][1]
         if age_101 < 65 && age_201 < 65                     # Both below 65
@@ -79,13 +79,13 @@ for k in hhs_2003
             df_ASEC_2003[ num_vec[2], :FILESTAT_adj] = 2
         end
 
-        # # hhs with taxable income = 0
-        # taxinc_101 = df_tmp[df_tmp.RELATE .== 101, :TAXINC][1]
-        # taxinc_201 = df_tmp[df_tmp.RELATE .== 201, :TAXINC][1]
-        # if taxinc_101 == 0 && taxinc_201 == 0
-        #     df_ASEC_2003[ num_vec[1], :FILESTAT_adj] = 6
-        #     df_ASEC_2003[ num_vec[2], :FILESTAT_adj] = 6
-        # end
+        # hhs with agi income = 0
+        adjginc_101 = df_tmp[df_tmp.RELATE .== 101, :ADJGINC][1]
+        adjginc_201 = df_tmp[df_tmp.RELATE .== 201, :ADJGINC][1]
+        if adjginc_101 == 0 && adjginc_201 == 0
+            df_ASEC_2003[ num_vec[1], :FILESTAT_adj] = 6
+            df_ASEC_2003[ num_vec[2], :FILESTAT_adj] = 6
+        end
 
         # remaining hh members
         if length(num_vec) > 2
@@ -98,7 +98,7 @@ end
 
 # Compute measures for mis classifications
 df_ASEC_2003[!, :delta_FILESTAT] = df_ASEC_2003[!, :FILESTAT] - df_ASEC_2003[!, :FILESTAT_adj];
-histogram(df_ASEC_2003.delta_FILESTAT)
+#histogram(df_ASEC_2003.delta_FILESTAT)
 describe(df_ASEC_2003.delta_FILESTAT)
 N_same_class = count(i->(i == 0),df_ASEC_2003.delta_FILESTAT)
 pc_same_class = (N_same_class./size(df_ASEC_2003,1))*100
@@ -110,26 +110,33 @@ df_inspect = first(df_ASEC_2003_mis,100);
 CSV.write(dir_out * file_out_temp, df_inspect);
 
 
-# Fix resulting mis classifications
-
-df_ASEC_2003_mis[!, :num] = 1:(size(df_ASEC_2003_mis,1));
-
-hhs_2003_mis = unique(df_ASEC_2003_mis.SERIAL);
-
-for k in hhs_2003_mis
-
-    df_tmp = df_ASEC_2003_mis[df_ASEC_2003_mis.SERIAL .== k, :]
-
-    num_vec_mis = unique(df_tmp.num)
-    taxinc_101 = df_tmp[df_tmp.RELATE .== 101, :TAXINC][1]
-    taxinc_201 = df_tmp[df_tmp.RELATE .== 201, :TAXINC][1]
-
-    if taxinc_101 == 0 && taxinc_201 == 0
-        df_ASEC_2003_mis[ num_vec_mis[1], :FILESTAT_adj] = 6
-        df_ASEC_2003_mis[ num_vec_mis[2], :FILESTAT_adj] = 6
-    else
-
-    end
+df_inspect = first(df_ASEC_2003,1000);
+CSV.write(dir_out * file_out_temp, df_inspect);
 
 
-end
+
+
+
+# # Fix resulting mis classifications
+#
+# df_ASEC_2003_mis[!, :num] = 1:(size(df_ASEC_2003_mis,1));
+#
+# hhs_2003_mis = unique(df_ASEC_2003_mis.SERIAL);
+#
+# for k in hhs_2003_mis
+#
+#     df_tmp = df_ASEC_2003_mis[df_ASEC_2003_mis.SERIAL .== k, :]
+#
+#     num_vec_mis = unique(df_tmp.num)
+#     taxinc_101 = df_tmp[df_tmp.RELATE .== 101, :TAXINC][1]
+#     taxinc_201 = df_tmp[df_tmp.RELATE .== 201, :TAXINC][1]
+#
+#     if taxinc_101 == 0 && taxinc_201 == 0
+#         df_ASEC_2003_mis[ num_vec_mis[1], :FILESTAT_adj] = 6
+#         df_ASEC_2003_mis[ num_vec_mis[2], :FILESTAT_adj] = 6
+#     else
+#
+#     end
+#
+#
+# end
