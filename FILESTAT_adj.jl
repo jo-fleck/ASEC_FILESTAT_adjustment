@@ -7,7 +7,7 @@ using CSV, DataFrames, StatsBase, Statistics
 using Plots, Plots.PlotMeasures, StatsPlots; gr()
 
 file_ASEC = "/Users/main/OneDrive - Istituto Universitario Europeo/data/ASEC/cps_00030.csv";
-dir_out = "/Users/main/Downloads/";
+dir_out = "/Users/main/Documents/GitHubRepos/ASEC_FILESTAT_adjustment/";
 file_out_temp = "tmp.csv"
 
 
@@ -18,12 +18,10 @@ filter!(r -> (r[:YEAR] .== 2003 || r[:YEAR] .== 2004), df_ASEC_0); # Keep only 2
 # Drop currently not needed vars
 select!(df_ASEC_0, Not([:MONTH, :CPSID, :ASECFLAG, :ASECWTH, :ASECWT, :EDUC, :STATEFIP, :OWNERSHP, :STAMPVAL, :FEDTAXAC, :DEPSTAT, :STATAXAC, :CPSIDP, :CTCCRD, :ACTCCRD, :EITCRED, :FEDRETIR, :CAIDLY, :PMVCAID, :FFNGCAID, :SCHIPLY]));
 
-#select!(df_ASEC_0,[:YEAR, :SERIAL, :HHINCOME, :PERNUM, :RELATE, :AGE, :SEX, :MARST, :FTOTVAL, :INCTOT, :ADJGINC, :FEDTAX, :FICA, :FILESTAT, :TAXINC]);
-
 df_ASEC_0[!, :FILESTAT_adj] = df_ASEC_0[!, :FILESTAT];
 
 
-# Plot FILESTAT histograms
+# Plot FILESTAT histograms for 2003 to 2006
 df_ASEC_2003 = filter(r -> r[:YEAR] == 2003, df_ASEC_0);
 df_ASEC_2004 = filter(r -> r[:YEAR] == 2004, df_ASEC_0);
 p1 = histogram(df_ASEC_2003.FILESTAT, legend=false, title = "2003: FILESTAT", titlefont=font(10))
@@ -50,6 +48,8 @@ groupedbar(nam1, mn1, group = sx1, ylabel = "%", title = "FILESTAT Frequencies",
 
 ## Replicate FILESTAT for 2003
 
+# Vars needed: SERIAL, RELATE, AGE, ADJGINC
+
 df_ASEC_2003[!, :num] = 1:(size(df_ASEC_2003,1));
 
 hhs_2003 = unique(df_ASEC_2003.SERIAL);
@@ -65,7 +65,6 @@ for k in hhs_2003
 
         num_vec = unique(df_tmp.num)
 
-        # hhs with agi > 0
         age_101 = df_tmp[df_tmp.RELATE .== 101, :AGE][1]
         age_201 = df_tmp[df_tmp.RELATE .== 201, :AGE][1]
         if age_101 < 65 && age_201 < 65                     # Both below 65
@@ -79,7 +78,7 @@ for k in hhs_2003
             df_ASEC_2003[ num_vec[2], :FILESTAT_adj] = 2
         end
 
-        # hhs with agi income = 0
+        # hhs with agi income = 0 do not need to file
         adjginc_101 = df_tmp[df_tmp.RELATE .== 101, :ADJGINC][1]
         adjginc_201 = df_tmp[df_tmp.RELATE .== 201, :ADJGINC][1]
         if adjginc_101 == 0 && adjginc_201 == 0
@@ -96,47 +95,76 @@ for k in hhs_2003
     end
 end
 
-# Compute measures for mis classifications
+# Compute measure of mis classifications
 df_ASEC_2003[!, :delta_FILESTAT] = df_ASEC_2003[!, :FILESTAT] - df_ASEC_2003[!, :FILESTAT_adj];
-#histogram(df_ASEC_2003.delta_FILESTAT)
-describe(df_ASEC_2003.delta_FILESTAT)
 N_same_class = count(i->(i == 0),df_ASEC_2003.delta_FILESTAT)
 pc_same_class = (N_same_class./size(df_ASEC_2003,1))*100
 
+## Use same algorithm on 2004 data
+
+# Vars needed: SERIAL, RELATE, AGE, ADJGINC
+
+df_2004 = select!(df_ASEC_2004,[:SERIAL, :RELATE, :AGE, :ADJGINC, :FILESTAT, :FILESTAT_adj]);
+#df_2004[!, :FILESTAT_adj] = df_2004[!, :FILESTAT];
+
+df_2004[!, :num] = 1:(size(df_2004,1));
+hhs_2004 = unique(df_2004.SERIAL);
+
+for k in hhs_2004
+
+    df_tmp = df_2004[df_2004.SERIAL .== k, :]
+    RELATE_vec = unique(df_tmp.RELATE)
+
+    if ~(201 in RELATE_vec)
+         continue # keep all FILESTAT as they are
+    else
+
+        num_vec = unique(df_tmp.num)
+
+        age_101 = df_tmp[df_tmp.RELATE .== 101, :AGE][1]
+        age_201 = df_tmp[df_tmp.RELATE .== 201, :AGE][1]
+        if age_101 < 65 && age_201 < 65                     # Both below 65
+            df_2004[ num_vec[1], :FILESTAT_adj] = 1
+            df_2004[ num_vec[2], :FILESTAT_adj] = 1
+        elseif age_101 >= 65 && age_201 >= 65               # Both 65+
+            df_2004[ num_vec[1], :FILESTAT_adj] = 3
+            df_2004[ num_vec[2], :FILESTAT_adj] = 3
+        else                                                # One above, one below
+            df_2004[ num_vec[1], :FILESTAT_adj] = 2
+            df_2004[ num_vec[2], :FILESTAT_adj] = 2
+        end
+
+        # hhs with agi income = 0 do not need to file
+        adjginc_101 = df_tmp[df_tmp.RELATE .== 101, :ADJGINC][1]
+        adjginc_201 = df_tmp[df_tmp.RELATE .== 201, :ADJGINC][1]
+        if adjginc_101 == 0 && adjginc_201 == 0
+            df_2004[ num_vec[1], :FILESTAT_adj] = 6
+            df_2004[ num_vec[2], :FILESTAT_adj] = 6
+        end
+
+        # remaining hh members
+        if length(num_vec) > 2
+            for l = 3:length(num_vec)
+                df_2004[ num_vec[l], :FILESTAT_adj] = df_2004[ num_vec[l], :FILESTAT]
+            end
+        end
+    end
+end
+
+df_2004[!, :delta_FILESTAT] = df_2004[!, :FILESTAT] - df_2004[!, :FILESTAT_adj];
 
 
-df_ASEC_2003_mis = filter(r -> (r[:delta_FILESTAT] .!= 0), df_ASEC_2003);
-df_inspect = first(df_ASEC_2003_mis,100);
-CSV.write(dir_out * file_out_temp, df_inspect);
-
-
-df_inspect = first(df_ASEC_2003,1000);
-CSV.write(dir_out * file_out_temp, df_inspect);
+# Plot FILESTAT histograms
+pp1 = histogram(df_ASEC_2003.FILESTAT, legend=false, title = "2003: FILESTAT", titlefont=font(10))
+pp2 = histogram(df_ASEC_2004.FILESTAT, legend=false, title = "2004: FILESTAT", titlefont=font(10))
+pp3 = histogram(df_2004.FILESTAT_adj, legend=false, title = "2004: FILESTAT - ADJUSTED", titlefont=font(10))
+plot(pp1, pp2, pp3, layout=(3,1))
 
 
 
 
 
-# # Fix resulting mis classifications
-#
-# df_ASEC_2003_mis[!, :num] = 1:(size(df_ASEC_2003_mis,1));
-#
-# hhs_2003_mis = unique(df_ASEC_2003_mis.SERIAL);
-#
-# for k in hhs_2003_mis
-#
-#     df_tmp = df_ASEC_2003_mis[df_ASEC_2003_mis.SERIAL .== k, :]
-#
-#     num_vec_mis = unique(df_tmp.num)
-#     taxinc_101 = df_tmp[df_tmp.RELATE .== 101, :TAXINC][1]
-#     taxinc_201 = df_tmp[df_tmp.RELATE .== 201, :TAXINC][1]
-#
-#     if taxinc_101 == 0 && taxinc_201 == 0
-#         df_ASEC_2003_mis[ num_vec_mis[1], :FILESTAT_adj] = 6
-#         df_ASEC_2003_mis[ num_vec_mis[2], :FILESTAT_adj] = 6
-#     else
-#
-#     end
-#
-#
-# end
+# # Utilities
+# df_ASEC_2003_mis = filter(r -> (r[:delta_FILESTAT] .!= 0), df_ASEC_2003);
+# df_inspect = first(df_ASEC_2003_mis,100);
+# CSV.write(dir_out * file_out_temp, df_inspect);
