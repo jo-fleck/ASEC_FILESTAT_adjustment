@@ -1,6 +1,15 @@
-## Apply FILESTAT adjustment algorithm to 2004 ASEC data
+### Apply FILESTAT adjustment algorithm to 2004 ASEC data
 
-# Prepare 2004 data
+
+## Copyright (C) 2020 Johannes Fleck - https://github.com/Jo-Fleck/ASEC_FILESTAT_adjustment
+#
+# You may use use this code and redistribute it freely. I do ask that you
+# please leave this notice and the above URL in the source code if you choose to
+# to do so and to acknowlege its use in any resulting documents.
+
+
+## Prepare 2004 data
+
 df_2004 = select!(df_ASEC_2004,[:SERIAL, :RELATE, :AGE, :ADJGINC, :FILESTAT, :FILESTAT_adj]);
 df_2004[!, :num] = 1:(size(df_2004,1));
 hhs_2004 = unique(df_2004.SERIAL);
@@ -46,7 +55,8 @@ for k in hhs_2004
     end
 end
 
-# Compute measure of mis classifications
+## Compute measure of mis classifications
+
 df_2004[!, :delta_FILESTAT] = df_2004[!, :FILESTAT] - df_2004[!, :FILESTAT_adj];
 N_same_class = count(i->(i == 0),df_2004.delta_FILESTAT);
 pc_same_class = (N_same_class./size(df_2004,1))*100
