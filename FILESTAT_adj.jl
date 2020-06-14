@@ -1,6 +1,7 @@
-### ASEC FILESTAT adjustment for 2004 and 2005
+### ASEC FILESTAT adjustment: tables and figures for technical report
 
-# Copyright (C) 2020 Johannes Fleck - https://github.com/Jo-Fleck/ASEC_FILESTAT_adjustment
+
+## Copyright (C) 2020 Johannes Fleck - https://github.com/Jo-Fleck/ASEC_FILESTAT_adjustment
 #
 # You may use use this code and redistribute it freely. If you choose to do so
 # I do ask that you please leave this notice and the above URL in the source code
@@ -10,7 +11,7 @@
 ## Open Ends
 
 # - Improve performance
-# - Increase replication rates
+# - Increase replication rates post 2005
 
 
 ## Housekeeping
@@ -21,7 +22,6 @@ using PrettyTables
 
 file_ASEC = "/Users/main/OneDrive - Istituto Universitario Europeo/data/ASEC/cps_00032.csv";
 dir_out = "/Users/main/Documents/GitHubRepos/ASEC_FILESTAT_adjustment/";
-file_out_temp = "tmp.csv"
 
 
 ## Prepare data
@@ -44,6 +44,7 @@ p3 = histogram(df_ASEC_2005.FILESTAT, legend=false, title = "2005", titlefont=fo
 p4 = histogram(df_ASEC_2006.FILESTAT, legend=false, title = "2006", titlefont=font(10))
 plot(p1, p2, p3, p4, layout=(2,2))
 savefig( dir_out * "/FILESTAT_2003to2006.pdf")
+savefig( dir_out * "/FILESTAT_2003to2006.png")
 
 # Generate tex table with FILESTAT distributions in different years
 gdf = groupby(df_ASEC_0, [:YEAR, :FILESTAT]);
