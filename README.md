@@ -17,7 +17,7 @@ As the panels below illustrate, the share of nonfilers appears to be much larger
 
 * The adjustment algorithm in the file `FILESTAT_adj_2004.jl` corrects the discrepancies for the year 2004. It can easily be applied to other years and reproduced in other languages.
 
-* `ASEC_FILESTAT_adjustment.pdf` contains a brief technical report on the FILESTAT discrepancies. This report presents more details on the FILESTAT discrepancies, the adjustment algorithm and the adjusted values of FILESTAT.
+* `Report_ASEC_FILESTAT_adjustment.pdf` contains a brief technical report on the FILESTAT discrepancies. This report presents more details on the FILESTAT discrepancies, the adjustment algorithm and the adjusted values of FILESTAT.
 
 * `FILESTAT_adj.jl` generates the figures and tables shown in the technical report.
 
