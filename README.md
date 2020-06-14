@@ -15,6 +15,10 @@ As the panels below illustrate, the share of nonfilers appears to be much larger
 
 ![FILESTAT Comparison](FILESTAT_2003to2006.png)
 
-Based on these distribution of FILESTAT values, I formed the following hypothesis: In years other than 2004 and 2005, the imputation procedure generating FILESTAT values assigned persons who filed jointly the same category. In 2004 and 2005, however, it assigned one of them the joint filer status and nonfiler status to the other. 
+* The adjustment algorithm in the file `FILESTAT_adj_2004.jl` corrects the discrepancies for the year 2004. It can easily be applied to other years and reproduced in other languages.
 
-My adjustment algorithm corrects the discrepancies on the basis of this hypothesis.
+* `ASEC_FILESTAT_adjustment.pdf` contains a brief technical report on the FILESTAT discrepancies. This report presents more details on the FILESTAT discrepancies, the adjustment algorithm and the adjusted values of FILESTAT.
+
+* `FILESTAT_adj.jl` generates the figures and tables shown in the technical report.
+
+* `FILESTAT_post_2005.jl` investigates additional FILESTAT inconsistencies after 2005.
