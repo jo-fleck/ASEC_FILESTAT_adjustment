@@ -13,4 +13,4 @@ The CPS ASEC variable FILESTAT reports the federal income tax filing status. It 
 
 As these plots illustrate, the share of nonfilers appears to be much larger in 2004 and 2005. The reverse applies to the share of joint filers below 65 while the shares of head of household and single filers seem comparable across years.
 
-![alt text](https://github.com/Jo-Fleck/ASEC_FILESTAT_adjustment/blob/master/FILESTAT_2003to2006.pdf "Logo Title Text 1")
+![Winsor Comparison](FILESTAT_2003to2006.pdf)
