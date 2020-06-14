@@ -60,10 +60,10 @@ for i = 1:length(tbl1_years)
     tbl1[:,i] = tbl_tmp
 end
 tbl1_final = [tbl1_col1 tbl1];
-hl_2004 = LatexHighlighter( (tbl1_final,i,j)->(j == findall(x->x==2004,tbl1_years)[1]+1 && (i < 4 || i == 6 )), ["color{red}", "textbf"])
-hl_2005 = LatexHighlighter( (tbl1_final,i,j)->(j == findall(x->x==2005,tbl1_years)[1]+1 && (i < 4 || i == 6 )), ["color{red}", "textbf"])
+tbl1_hl_2004 = LatexHighlighter( (tbl1_final,i,j)->(j == findall(x->x==2004,tbl1_years)[1]+1 && (i < 4 || i == 6 )), ["color{red}", "textbf"])
+tbl1_hl_2005 = LatexHighlighter( (tbl1_final,i,j)->(j == findall(x->x==2005,tbl1_years)[1]+1 && (i < 4 || i == 6 )), ["color{red}", "textbf"])
 open(dir_out * "/tbl1.tex", "w") do f
-        pretty_table(f, tbl1_final, tbl1_header, backend = :latex, highlighters = (hl_2004, hl_2005));
+        pretty_table(f, tbl1_final, tbl1_header, backend = :latex, highlighters = (tbl1_hl_2004, tbl1_hl_2005));
 end
 
 
@@ -147,21 +147,45 @@ end
 # For 2004 and 2005, compute relative frequencies of adjusted FILESTAT
 df_2004_2005 = filter(r -> (r[:YEAR] .== 2004 || r[:YEAR] .== 2005 ), df_joint);
 gdf_2004_2005 = groupby(df_2004_2005, [:YEAR, :FILESTAT_adj]);
-df_FILESTAT_2004_2005 = combine(gdf_2004_2005, nrow);
-sort!(df_FILESTAT_2004_2005, [:YEAR, :FILESTAT_adj]);
+df_FILESTAT_2004_2005_adj = combine(gdf_2004_2005, nrow);
+sort!(df_FILESTAT_2004_2005_adj, [:YEAR, :FILESTAT_adj]);
 
-tbl3_years = unique(df_FILESTAT_2004_2005.YEAR);
-tbl3_header = ["Adjusted FILESTAT" string.(tbl3_years')];
-tbl3_col1 = ["1"; "2"; "3"; "4"; "5"; "6"];
-tbl3 = Array{Float64}(undef, size(tbl3_col1, 1), size(tbl3_header, 2)-1 );
-for i = 1:length(tbl3_years)
-    df_tmp = filter(row -> (row[:YEAR] == tbl3_years[i]), df_FILESTAT_2004_2005)
+tbl3_adj_years = unique(df_FILESTAT_2004_2005_adj.YEAR);
+tbl3_adj = Array{Float64}(undef, size(tbl1_col1, 1), size(tbl3_adj_years, 1) );
+for i = 1:length(tbl3_adj_years)
+    df_tmp = filter(row -> (row[:YEAR] == tbl3_adj_years[i]), df_FILESTAT_2004_2005_adj)
     tbl_tmp = round.((df_tmp.nrow/sum(df_tmp.nrow))*100,digits=2)
-    tbl3[:,i] = tbl_tmp
+    tbl3_adj[:,i] = tbl_tmp
 end
+
+# Merge with years 2003 to 2006 of table 1
+tbl3_years = [2003, 2004, 2004, 2005, 2005, 2006];
+tbl3 = Array{Float64}(undef, size(tbl1_col1, 1), size(tbl3_years, 1));
+for i = 1:size(tbl3,2)
+    if i == 1                       # 2003
+        tbl3[:,i] = tbl1[:,4];
+    elseif i == 2                   # 2004 unadjusted
+        tbl3[:,i] = tbl1[:,5];
+    elseif i == 3                   # 2004 adjusted
+        tbl3[:,i] = tbl3_adj[:,1];
+    elseif i == 4                   # 2005 unadjusted
+        tbl3[:,i] = tbl1[:,6];
+    elseif i == 5                   # 2005 adjusted
+        tbl3[:,i] = tbl3_adj[:,2];
+    else                            # 2006
+        tbl3[:,i] = tbl1[:,7];
+    end
+end
+
+tbl3_header = ["FILESTAT" string.(tbl3_years')]
+tbl3_col1 = ["1"; "2"; "3"; "4"; "5"; "6"];
 tbl3_final = [tbl3_col1 tbl3];
+tbl3_hl_2004 = LatexHighlighter( (tbl3_final,i,j)->(j == 3 && i > 0 ), ["color{red}", "textbf"])
+tbl3_hl_2005 = LatexHighlighter( (tbl3_final,i,j)->(j == 5 && i > 0 ), ["color{red}", "textbf"])
+tbl3_hl_2004_adj = LatexHighlighter( (tbl3_final,i,j)->(j == 4 && i > 0 ), ["color{blue}", "textbf"])
+tbl3_hl_2005_adj = LatexHighlighter( (tbl3_final,i,j)->(j == 6 && i > 0 ), ["color{blue}", "textbf"])
 open(dir_out * "/tbl3.tex", "w") do f
-        pretty_table(f, tbl3_final, tbl3_header, backend = :latex);
+        pretty_table(f, tbl3_final, tbl3_header, backend = :latex, highlighters = (tbl3_hl_2004, tbl3_hl_2005, tbl3_hl_2004_adj, tbl3_hl_2005_adj));
 end
 
 # Plot adjusted FILESTAT histograms for 2003 to 2006
