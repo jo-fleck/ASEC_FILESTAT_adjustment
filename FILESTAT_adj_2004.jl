@@ -3,9 +3,9 @@
 
 ## Copyright (C) 2020 Johannes Fleck - https://github.com/Jo-Fleck/ASEC_FILESTAT_adjustment
 #
-# You may use use this code and redistribute it freely. I do ask that you
-# please leave this notice and the above URL in the source code if you choose to
-# to do so and to acknowlege its use in any resulting documents.
+# You may use use this code and redistribute it freely. If you choose to do so
+# I do ask that you please leave this notice and the above URL in the source code
+# and to acknowledge its use in any resulting documents.
 
 
 ## Prepare 2004 data

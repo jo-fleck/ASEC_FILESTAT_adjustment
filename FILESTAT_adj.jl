@@ -1,5 +1,17 @@
 ### ASEC FILESTAT adjustment for 2004 and 2005
 
+# Copyright (C) 2020 Johannes Fleck - https://github.com/Jo-Fleck/ASEC_FILESTAT_adjustment
+#
+# You may use use this code and redistribute it freely. If you choose to do so
+# I do ask that you please leave this notice and the above URL in the source code
+# and to acknowledge its use in any resulting documents.
+
+
+## Open Ends
+
+# - Improve performance
+# - Increase replication rates
+
 
 ## Housekeeping
 
@@ -15,7 +27,8 @@ file_out_temp = "tmp.csv"
 ## Prepare data
 
 df_ASEC_0 = DataFrame(CSV.read(file_ASEC));
-filter!(r -> (r[:YEAR] .<= 2015), df_ASEC_0);           # Keep only years up to 2015
+filter!(r -> (r[:YEAR] .<= 2015), df_ASEC_0);                                           # Keep only years up to 2015
+insertcols!(df_ASEC_0, size(df_ASEC_0,2)+1, :FILESTAT_adj => df_ASEC_0[:,:FILESTAT]);   # Add adjusted FILESTAT variable
 
 
 ## Illustrate time comparability of FILESTAT
@@ -37,229 +50,124 @@ gdf = groupby(df_ASEC_0, [:YEAR, :FILESTAT]);
 df_FILESTAT = combine(gdf, nrow);
 sort!(df_FILESTAT, [:YEAR, :FILESTAT]);
 
-tbl_years = unique(df_ASEC_0.YEAR);
-tbl_header = ["FILESTAT" string.(tbl_years')];
-tbl_col1 = ["1"; "2"; "3"; "4"; "5"; "6"];
-tbl = Array{Float64}(undef, size(tbl_col1, 1), size(tbl_header, 2)-1 );
-for i = 1:length(tbl_years)
-    df_tmp = filter(row -> (row[:YEAR] == tbl_years[i]), df_FILESTAT)
+tbl1_years = unique(df_ASEC_0.YEAR);
+tbl1_header = ["FILESTAT" string.(tbl1_years')];
+tbl1_col1 = ["1"; "2"; "3"; "4"; "5"; "6"];
+tbl1 = Array{Float64}(undef, size(tbl1_col1, 1), size(tbl1_header, 2)-1 );
+for i = 1:length(tbl1_years)
+    df_tmp = filter(row -> (row[:YEAR] == tbl1_years[i]), df_FILESTAT)
     tbl_tmp = round.((df_tmp.nrow/sum(df_tmp.nrow))*100,digits=2)
-    tbl[:,i] = tbl_tmp
+    tbl1[:,i] = tbl_tmp
 end
-tbl_final = [tbl_col1 tbl];
-hl_2004 = LatexHighlighter( (tbl_final,i,j)->(j == findall(x->x==2004,tbl_years)[1]+1 && (i < 4 || i == 6 )), ["color{red}", "textbf"])
-hl_2005 = LatexHighlighter( (tbl_final,i,j)->(j == findall(x->x==2005,tbl_years)[1]+1 && (i < 4 || i == 6 )), ["color{red}", "textbf"])
-open(dir_out * "/tbl_FILESTAT.tex", "w") do f
-        pretty_table(f, tbl_final, tbl_header, backend = :latex, highlighters = (hl_2004, hl_2005));
+tbl1_final = [tbl1_col1 tbl1];
+hl_2004 = LatexHighlighter( (tbl1_final,i,j)->(j == findall(x->x==2004,tbl1_years)[1]+1 && (i < 4 || i == 6 )), ["color{red}", "textbf"])
+hl_2005 = LatexHighlighter( (tbl1_final,i,j)->(j == findall(x->x==2005,tbl1_years)[1]+1 && (i < 4 || i == 6 )), ["color{red}", "textbf"])
+open(dir_out * "/tbl1.tex", "w") do f
+        pretty_table(f, tbl1_final, tbl1_header, backend = :latex, highlighters = (hl_2004, hl_2005));
 end
 
 
-## Apply adjustment algorithm
-
-# Add person id
-df_ASEC_0[!, :num] = 1:(size(df_ASEC_0,1));
+## Apply adjustment algorithm to all years
 
 # Add hh id
-gd_tmp = groupby(df_ASEC_0, [:YEAR,:SERIAL]);
+gd_tmp = groupby(df_ASEC_0, [:YEAR, :SERIAL]);
 id_tmp = collect(skipmissing(groupindices(gd_tmp)));
-insertcols!(df_ASEC_0, 1, :id => id_tmp);
+insertcols!(df_ASEC_0, 1, :hh_id => id_tmp);
 
-df1 = convert(Matrix,df)
+# Create two groups: hhs with 201 and those without
+gdf_tmp = groupby(df_ASEC_0, [:YEAR, :hh_id]);
+df_id_201_tmp = combine(:RELATE => p -> (201 in p), gdf_tmp);
+df_id_201 = filter(r -> (r[:RELATE_function] .== 1), df_id_201_tmp);
+df_id_not_201 = filter(r -> (r[:RELATE_function] .== 0), df_id_201_tmp);
+df_joint = filter(r -> (r[:hh_id] in df_id_201.hh_id), df_ASEC_0);
+df_not_joint = filter(r -> (r[:hh_id] in df_id_not_201.hh_id), df_ASEC_0);
 
-
-hhs = unique(df_ASEC_0.id);
-
-@time for k in hhs
-
-    df_tmp = df_ASEC_0[df_ASEC_0.id .== k, :]
-    RELATE_vec = unique(df_tmp.RELATE)
-
-    if ~(201 in RELATE_vec)
-         continue # keep all FILESTAT as they are
-    else
-
-        num_vec = unique(df_tmp.num)
+# Define function applying the adjustment algorithm to a dataframe object
+function f_adj(df_tmp)
 
         age_101 = df_tmp[df_tmp.RELATE .== 101, :AGE][1]
         age_201 = df_tmp[df_tmp.RELATE .== 201, :AGE][1]
         if age_101 < 65 && age_201 < 65                     # Both below 65
-            df_ASEC_0[num_vec[1], :FILESTAT_adj] = 1
-            df_ASEC_0[num_vec[2], :FILESTAT_adj] = 1
+            df_tmp[1, :FILESTAT_adj] = 1
+            df_tmp[2, :FILESTAT_adj] = 1
         elseif age_101 >= 65 && age_201 >= 65               # Both 65+
-            df_ASEC_0[num_vec[1], :FILESTAT_adj] = 3
-            df_ASEC_0[num_vec[2], :FILESTAT_adj] = 3
+            df_tmp[1, :FILESTAT_adj] = 3
+            df_tmp[2, :FILESTAT_adj] = 3
         else                                                # One above, one below
-            df_ASEC_0[num_vec[1], :FILESTAT_adj] = 2
-            df_ASEC_0[num_vec[2], :FILESTAT_adj] = 2
+            df_tmp[1, :FILESTAT_adj] = 2
+            df_tmp[2, :FILESTAT_adj] = 2
         end
 
         # hhs with agi income = 0 do not need to file
         adjginc_101 = df_tmp[df_tmp.RELATE .== 101, :ADJGINC][1]
         adjginc_201 = df_tmp[df_tmp.RELATE .== 201, :ADJGINC][1]
         if adjginc_101 == 0 && adjginc_201 == 0
-            df_ASEC_0[num_vec[1], :FILESTAT_adj] = 6
-            df_ASEC_0[num_vec[2], :FILESTAT_adj] = 6
+            df_tmp[1, :FILESTAT_adj] = 6
+            df_tmp[2, :FILESTAT_adj] = 6
         end
 
         # remaining hh members
-        if length(num_vec) > 2
-            for l = 3:length(num_vec)
-                df_ASEC_0[num_vec[l], :FILESTAT_adj] = df_ASEC_0[num_vec[l], :FILESTAT]
+        if size(df_tmp,1) > 2
+            for l = 3:size(df_tmp,1)
+                df_tmp[l, :FILESTAT_adj] = df_tmp[l, :FILESTAT]
             end
         end
-    end
+
+        return df_tmp[:, :FILESTAT_adj]
 end
 
+# Apply algorithm only to joint filer group
+vec_push = Int64[];
+hhs_joint = unique(df_joint.hh_id);
+@time for k in hhs_joint
+    append!(vec_push, f_adj(df_joint[df_joint.hh_id .== k, :]))
+end
+select!(df_joint, Not(:FILESTAT_adj));                                  # Remove 'original' FILESTAT
+insertcols!(df_joint, size(df_joint,2)+1, :FILESTAT_adj => vec_push);   # Add adjusted FILESTAT
 
-# Compute measure of same classifications as original FILESTAT
-df_ASEC_0[!, :delta_FILESTAT] = df_ASEC_0[!, :FILESTAT] - df_ASEC_0[!, :FILESTAT_adj];
+# Merge the two different groups
+append!(df_joint, df_not_joint);
 
-years = unique(df_ASEC_0.YEAR);
+# Compute measure of classification relative to FILESTAT
+df_joint[!, :delta_FILESTAT] = df_joint[!, :FILESTAT] .- df_joint[!, :FILESTAT_adj];
+years = unique(df_joint.YEAR);
 pc_same = Array{Float64}(undef, length(years));
-
 for i = 1:length(years)
-    df_tmp = df_ASEC_0[df_ASEC_0.YEAR .== years[i], :]
+    df_tmp = df_joint[df_joint.YEAR .== years[i], :]
     N_same = count(i->(i == 0),df_tmp.delta_FILESTAT)
-    pc_same[i] = (N_same./size(df_tmp,1))*100
+    pc_same[i] = round.((N_same./size(df_tmp,1))*100,digits=2)
 end
 
-N_same_class = count(i->(i == 0),df_ASEC_2003.delta_FILESTAT)
-pc_same_class = (N_same_class./size(df_ASEC_2003,1))*100
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Replicate FILESTAT for 2003
-
-df_ASEC_2003 = filter(r -> (r[:YEAR] .== 2003), df_ASEC_0);
-
-hhs_2003 = unique(df_ASEC_2003.SERIAL);
-
-for k in hhs_2003
-
-    df_tmp = df_ASEC_2003[df_ASEC_2003.SERIAL .== k, :]
-    RELATE_vec = unique(df_tmp.RELATE)
-
-    if ~(201 in RELATE_vec)
-         continue # keep all FILESTAT as they are
-    else
-
-        num_vec = unique(df_tmp.num)
-
-        age_101 = df_tmp[df_tmp.RELATE .== 101, :AGE][1]
-        age_201 = df_tmp[df_tmp.RELATE .== 201, :AGE][1]
-        if age_101 < 65 && age_201 < 65                     # Both below 65
-            df_ASEC_2003[ num_vec[1], :FILESTAT_adj] = 1
-            df_ASEC_2003[ num_vec[2], :FILESTAT_adj] = 1
-        elseif age_101 >= 65 && age_201 >= 65               # Both 65+
-            df_ASEC_2003[ num_vec[1], :FILESTAT_adj] = 3
-            df_ASEC_2003[ num_vec[2], :FILESTAT_adj] = 3
-        else                                                # One above, one below
-            df_ASEC_2003[ num_vec[1], :FILESTAT_adj] = 2
-            df_ASEC_2003[ num_vec[2], :FILESTAT_adj] = 2
-        end
-
-        # hhs with agi income = 0 do not need to file
-        adjginc_101 = df_tmp[df_tmp.RELATE .== 101, :ADJGINC][1]
-        adjginc_201 = df_tmp[df_tmp.RELATE .== 201, :ADJGINC][1]
-        if adjginc_101 == 0 && adjginc_201 == 0
-            df_ASEC_2003[ num_vec[1], :FILESTAT_adj] = 6
-            df_ASEC_2003[ num_vec[2], :FILESTAT_adj] = 6
-        end
-
-        # remaining hh members
-        if length(num_vec) > 2
-            for l = 3:length(num_vec)
-                df_ASEC_2003[ num_vec[l], :FILESTAT_adj] = df_ASEC_2003[ num_vec[l], :FILESTAT]
-            end
-        end
-    end
+tbl2_years = unique(df_joint.YEAR);
+tbl2_header = string.(tbl2_years');
+open(dir_out * "/tbl2.tex", "w") do f
+        pretty_table(f, pc_same', tbl2_header, backend = :latex);
 end
 
-# Compute measure of mis classifications
-df_ASEC_2003[!, :delta_FILESTAT] = df_ASEC_2003[!, :FILESTAT] - df_ASEC_2003[!, :FILESTAT_adj];
-N_same_class = count(i->(i == 0),df_ASEC_2003.delta_FILESTAT)
-pc_same_class = (N_same_class./size(df_ASEC_2003,1))*100
+# For 2004 and 2005, compute relative frequencies of adjusted FILESTAT
+df_2004_2005 = filter(r -> (r[:YEAR] .== 2004 || r[:YEAR] .== 2005 ), df_joint);
+gdf_2004_2005 = groupby(df_2004_2005, [:YEAR, :FILESTAT_adj]);
+df_FILESTAT_2004_2005 = combine(gdf_2004_2005, nrow);
+sort!(df_FILESTAT_2004_2005, [:YEAR, :FILESTAT_adj]);
 
-## Use same algorithm on 2004 data
-
-# Prepare 2004 data
-df_2004 = filter(r -> (r[:YEAR] .== 2004), df_ASEC_0);
-
-hhs_2004 = unique(df_2004.SERIAL);
-
-for k in hhs_2004
-
-    df_tmp = df_2004[df_2004.SERIAL .== k, :]
-    RELATE_vec = unique(df_tmp.RELATE)
-
-    if ~(201 in RELATE_vec)
-         continue # keep all FILESTAT as they are
-    else
-
-        num_vec = unique(df_tmp.num)
-
-        age_101 = df_tmp[df_tmp.RELATE .== 101, :AGE][1]
-        age_201 = df_tmp[df_tmp.RELATE .== 201, :AGE][1]
-        if age_101 < 65 && age_201 < 65                     # Both below 65
-            df_2004[ num_vec[1], :FILESTAT_adj] = 1
-            df_2004[ num_vec[2], :FILESTAT_adj] = 1
-        elseif age_101 >= 65 && age_201 >= 65               # Both 65+
-            df_2004[ num_vec[1], :FILESTAT_adj] = 3
-            df_2004[ num_vec[2], :FILESTAT_adj] = 3
-        else                                                # One above, one below
-            df_2004[ num_vec[1], :FILESTAT_adj] = 2
-            df_2004[ num_vec[2], :FILESTAT_adj] = 2
-        end
-
-        # hhs with agi income = 0 do not need to file
-        adjginc_101 = df_tmp[df_tmp.RELATE .== 101, :ADJGINC][1]
-        adjginc_201 = df_tmp[df_tmp.RELATE .== 201, :ADJGINC][1]
-        if adjginc_101 == 0 && adjginc_201 == 0
-            df_2004[ num_vec[1], :FILESTAT_adj] = 6
-            df_2004[ num_vec[2], :FILESTAT_adj] = 6
-        end
-
-        # remaining hh members
-        if length(num_vec) > 2
-            for l = 3:length(num_vec)
-                df_2004[ num_vec[l], :FILESTAT_adj] = df_2004[ num_vec[l], :FILESTAT]
-            end
-        end
-    end
+tbl3_years = unique(df_FILESTAT_2004_2005.YEAR);
+tbl3_header = ["Adjusted FILESTAT" string.(tbl3_years')];
+tbl3_col1 = ["1"; "2"; "3"; "4"; "5"; "6"];
+tbl3 = Array{Float64}(undef, size(tbl3_col1, 1), size(tbl3_header, 2)-1 );
+for i = 1:length(tbl3_years)
+    df_tmp = filter(row -> (row[:YEAR] == tbl3_years[i]), df_FILESTAT_2004_2005)
+    tbl_tmp = round.((df_tmp.nrow/sum(df_tmp.nrow))*100,digits=2)
+    tbl3[:,i] = tbl_tmp
+end
+tbl3_final = [tbl3_col1 tbl3];
+open(dir_out * "/tbl3.tex", "w") do f
+        pretty_table(f, tbl3_final, tbl3_header, backend = :latex);
 end
 
-df_2004[!, :delta_FILESTAT] = df_2004[!, :FILESTAT] - df_2004[!, :FILESTAT_adj];
-N_same_class = count(i->(i == 0),df_2004.delta_FILESTAT)
-pc_same_class = (N_same_class./size(df_2004,1))*100
-
-
-
-# Plot FILESTAT histograms
-pp1 = histogram(df_ASEC_2003.FILESTAT, legend=false, title = "2003: FILESTAT", titlefont=font(10))
-pp2 = histogram(df_ASEC_2004.FILESTAT, legend=false, title = "2004: FILESTAT", titlefont=font(10))
-pp3 = histogram(df_2004.FILESTAT_adj, legend=false, title = "2004: FILESTAT - ADJUSTED", titlefont=font(10))
-plot(pp1, pp2, pp3, layout=(3,1))
-
-
-
-
-
-# # Utilities
-# df_ASEC_2003_mis = filter(r -> (r[:delta_FILESTAT] .!= 0), df_ASEC_2003);
-# df_inspect = first(df_ASEC_2003_mis,100);
-# CSV.write(dir_out * file_out_temp, df_inspect);
+# Plot adjusted FILESTAT histograms for 2003 to 2006
+df_ASEC_2004_adj = filter(r -> r[:YEAR] == 2004, df_joint);
+df_ASEC_2005_adj = filter(r -> r[:YEAR] == 2005, df_joint);
+p2_adj = histogram(df_ASEC_2004_adj.FILESTAT_adj, legend=false, title = "2004 adjusted", titlefont=font(10))
+p3_adj = histogram(df_ASEC_2005_adj.FILESTAT_adj, legend=false, title = "2005 adjusted", titlefont=font(10))
+plot(p1, p2_adj, p3_adj, p4, layout=(2,2))
+savefig( dir_out * "/FILESTAT_2003to2006_adj.pdf")
