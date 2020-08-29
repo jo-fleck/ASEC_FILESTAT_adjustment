@@ -22,3 +22,5 @@ As the panels below illustrate, the share of nonfilers appears to be much larger
 * `FILESTAT_adj.jl` generates the figures and tables shown in the technical report.
 
 * `FILESTAT_post_2005.jl` investigates additional FILESTAT inconsistencies after 2005.
+
+* The corresponding [IPUMS User Forum Thread](https://forum.ipums.org/t/filestat-comparability/3544)
