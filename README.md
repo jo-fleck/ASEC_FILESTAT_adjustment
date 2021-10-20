@@ -1,10 +1,10 @@
-# Adjusting the ASEC tax filing status variable (FILESTAT)
+## Adjusting the ASEC tax filing status variable (FILESTAT)
 
-## Detailed Report
+### Detailed Report
 
 This [report](https://github.com/jo-fleck/ASEC_FILESTAT_adjustment/blob/master/Report_ASEC_FILESTAT_adjustment.pdf) documents erroneous variation in the ASEC tax filing status variable (FILESTAT) in 2004 and 2005. It also shows how to adjust the variable so that it aligns with other years.
 
-## Summary of the Erroneous Variation
+### Summary of the Erroneous Variation
 
 The CPS ASEC variable FILESTAT reports the federal income tax filing status. Its values are imputed by the Census Bureau's Tax Model and provide six different tax filing status categories:
 
@@ -21,7 +21,7 @@ As the panels below illustrate, the share of nonfilers appears to be much larger
 
 ![FILESTAT Comparison](FILESTAT_2003to2006.png)
 
-## Materials in this Repository
+### Materials in this Repository
 
 * The adjustment algorithm in the file `FILESTAT_adj_2004.jl` corrects the discrepancies for the year 2004. It can easily be applied to other years and reproduced in other languages.
 
